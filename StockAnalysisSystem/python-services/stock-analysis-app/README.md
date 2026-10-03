@@ -1,5 +1,11 @@
 # StockAnalysisSystem
 
+## V0.7 独立单股回归入口
+
+新入口为 `python -m scripts.forecast train` 和 `python -m scripts.forecast predict`（加载既有模型，不重训）；两者均须显式股票代码、历史范围和可信本地 `--calendar` JSON，在特征计算前验证全部源开市日连续性，成功后追加发布结果。冻结源证据不可修改，推理日期必须保留原始前缀；旧无证据发布隐藏、直接查询 503，原数据保留。只读服务为 `python -m uvicorn api.forecast:app --host 127.0.0.1 --port 8084`，GET 不训练、不发布、不抓取日历、不自动 DDL。固定特征、因果切分、同一冻结模型的完整测试与最新无标签预测、零收益基线及安全账号示例见 [V0.7 业务指南](../../docs/V0.7_SINGLE_STOCK_PREDICTION.md)。
+
+API 为小数收益率，不是概率；latest 是数据库历史截止日，不是系统日期。原始未复权价和源记录缺口可能破坏经济收益/真实下一交易日解释，daily_basic 修订不保证 point-in-time。可信原生 JSON 模型存储在忽略的 `models/v07/`。以下旧三条管线及 `main.py` 行为、登记与缓存保持兼容，不能用旧 demo 命令替代 V0.7 验收。
+
 > V0.4 数据边界：本应用不再导入或调用 Tushare/AkShare。所有行情、估值和成分股由 `python-collector` 采集，本应用只读取 MySQL 与既有缓存。`--use_tushare` 参数仅为旧脚本兼容。
 
 A 股数据采集、特征工程、传统机器学习、LightGBM 排名选股、Transformer 排名选股和回测系统。

@@ -6,6 +6,7 @@
     history      回补指定日期范围数据
     basic        更新股票基础信息
     retry-failed 重试失败任务
+    replay-daily-events 从本地 MySQL 向 Kafka 重放已有日线
 
 示例：
     python main.py daily --date 2026-07-03
@@ -13,6 +14,7 @@
     python main.py history --start 2026-01-01 --end 2026-07-03
     python main.py basic
     python main.py retry-failed
+    python main.py replay-daily-events --start 2026-01-01 --end 2026-07-03
 """
 
 import argparse
@@ -170,6 +172,79 @@ def cmd_history(args):
             f"{result['failed_count']} 失败"
         )
         return 1
+
+
+def cmd_replay_daily_events(args):
+    """只读本地 stock_daily，向现有 Kafka 日线主题重放事件。"""
+    from database.db_connector import DatabaseConnector
+    from app.jobs.daily_event_replay_job import (
+        DailyEventReplayJob,
+        ReplayFailure,
+        normalize_replay_ts_code,
+    )
+    from app.kafka.producer import StockKafkaProducer
+    from app.repositories.stock_repository import StockRepository
+    from app.utils.date_utils import parse_date
+
+    start_date = parse_date(args.start)
+    end_date = parse_date(args.end)
+    if start_date > end_date:
+        raise ValueError('start_date 不能晚于 end_date')
+    if args.batch_size <= 0:
+        raise ValueError('batch-size 必须大于 0')
+    ts_code = normalize_replay_ts_code(args.ts_code)
+    replay_scope = ts_code or 'ALL'
+
+    db = None
+    producer = None
+    result = None
+    failure = None
+    try:
+        # Do not use _init_database(): it calls create_tables(). Replay is read-only.
+        db = DatabaseConnector(DATABASE_CONFIG)
+        producer = StockKafkaProducer()
+        with db.session_scope() as session:
+            result = DailyEventReplayJob(
+                StockRepository(session), producer
+            ).execute(start_date, end_date, args.batch_size, ts_code)
+    except ReplayFailure as exc:
+        failure = exc
+    except Exception:
+        # Exceptions from the connector/producer may contain credentials or payloads.
+        failure = ReplayFailure(0, 0)
+    finally:
+        if producer is not None:
+            try:
+                producer.close(flush=False)
+            except Exception:
+                if failure is None:
+                    failure = ReplayFailure(
+                        result['published_count'] if result else 0,
+                        result['batch_count'] if result else 0,
+                    )
+        if db is not None:
+            try:
+                db.close()
+            except Exception:
+                if failure is None:
+                    failure = ReplayFailure(
+                        result['published_count'] if result else 0,
+                        result['batch_count'] if result else 0,
+                    )
+
+    if failure is not None:
+        logger.error(
+            'Kafka 历史重放失败 [%s..%s, tsCode=%s]: 已确认 %s 条、%s 批',
+            start_date, end_date, replay_scope,
+            failure.published_count, failure.batch_count,
+        )
+        return 1
+    logger.info(
+        'Kafka 历史重放完成 [%s..%s, tsCode=%s]: %s 条、%s 批',
+        start_date, end_date, replay_scope,
+        result['published_count'], result['batch_count'],
+    )
+    return 0
 
 
 def _stock_codes_for_daily_basic(source, stock_repo):
@@ -391,6 +466,7 @@ def build_parser():
   daily-basic-history  历史补采每日指标
   constituent  采集指数或行业成分股快照
   daily-market 同日依次采集 OHLCV 和每日指标
+  replay-daily-events 按交易日顺序向 Kafka 重放本地日线
 
 示例:
   python main.py daily --date 2026-07-03
@@ -399,6 +475,7 @@ def build_parser():
   python main.py basic
   python main.py retry-failed
   python main.py retry-failed --source tushare
+  python main.py replay-daily-events --start 2026-01-01 --end 2026-07-03
         """,
     )
 
@@ -427,6 +504,17 @@ def build_parser():
     p_history.add_argument(
         '--end', type=str, required=True,
         help='结束日期（YYYYMMDD 或 YYYY-MM-DD）',
+    )
+
+    p_replay = subparsers.add_parser(
+        'replay-daily-events', help='按交易日顺序向 Kafka 重放已有日线行情'
+    )
+    p_replay.add_argument('--start', required=True)
+    p_replay.add_argument('--end', required=True)
+    p_replay.add_argument('--batch-size', type=int, default=5000)
+    p_replay.add_argument(
+        '--ts-code', default=None,
+        help='仅重放一只股票（如 000001.SZ）；省略则重放全市场',
     )
 
     # basic
@@ -478,6 +566,7 @@ def main():
     dispatch = {
         'daily': cmd_daily,
         'history': cmd_history,
+        'replay-daily-events': cmd_replay_daily_events,
         'basic': cmd_basic,
         'retry-failed': cmd_retry_failed,
         'daily-basic': cmd_daily_basic,

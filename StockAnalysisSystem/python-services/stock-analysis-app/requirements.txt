@@ -10,6 +10,7 @@ pymysql>=1.0.0
 # 数据分析
 scipy>=1.9.0
 scikit-learn>=1.1.0
+threadpoolctl==3.6.0
 
 # 机器学习
 xgboost>=1.7.0
@@ -26,6 +27,10 @@ mplfinance>=0.12.9
 
 # Web框架
 streamlit>=1.15.0
+fastapi>=0.132.0,<1.0
+uvicorn>=0.41.0,<1.0
+httpx>=0.28.0,<1.0
+pytest>=8.0.0
 
 # TA-Lib技术指标
 TA-Lib>=0.4.28

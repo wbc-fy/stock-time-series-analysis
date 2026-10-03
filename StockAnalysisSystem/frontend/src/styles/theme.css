@@ -1,0 +1,81 @@
+/* ── 双主题 CSS 变量 ────────────────────────────────────────
+   色板来源：dataviz 参考色板（已通过 CVD/对比度校验）。
+   A 股习惯：红涨绿跌（--up / --down），与状态色分离使用。 */
+
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #232321;
+  --surface-3: #2c2c2a;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --grid: #2c2c2a;
+  --axis: #383835;
+
+  --text-1: #ffffff;
+  --text-2: #c3c2b7;
+  --text-3: #898781;
+
+  --accent: #3987e5;
+  --accent-soft: rgba(57, 135, 229, 0.16);
+
+  /* 分类序列色（dark 阶梯） */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+
+  /* 涨跌（A 股：红涨绿跌，计划指定色值） */
+  --up: #e74c3c;
+  --down: #2ecc71;
+
+  /* 状态色（固定，不随主题变） */
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --surface-2: #f3f2ee;
+  --surface-3: #e9e8e2;
+  --border: rgba(11, 11, 11, 0.1);
+  --border-strong: rgba(11, 11, 11, 0.2);
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+
+  --text-1: #0b0b0b;
+  --text-2: #52514e;
+  --text-3: #898781;
+
+  --accent: #2a78d6;
+  --accent-soft: rgba(42, 120, 214, 0.12);
+
+  /* 分类序列色（light 阶梯） */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+
+  --up: #e74c3c;
+  --down: #2ecc71;
+
+  --shadow: 0 1px 3px rgba(11, 11, 11, 0.08);
+}

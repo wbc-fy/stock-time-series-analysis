@@ -2,6 +2,17 @@
 
 本文按当前代码实际入口整理。系统主要有三条训练/预测管线：单股传统预测、传统 LightGBM 排名、Transformer 排名。
 
+## V0.7 真实单股预测阅读顺序
+
+1. `analysis/forecast/contracts.py`：股票/模型绑定、严格回归 JSON、小数收益率与 horizon=1。
+2. `analysis/forecast/continuity.py` 与 `samples.py`：显式可信本地日历、完整源开市日连续性门禁及冻结/当前推理日期证据；历史固定特征、未来标签排除、因果时间切分与最后无标签行。
+3. `analysis/forecast/training.py`：有界 CPU XGBoost、冻结测试和零基线、加载模型 latest。
+4. `analysis/forecast/artifacts.py` 与 `repository.py`：可信原生 JSON、不可变模型、事务追加发布、有界查询；不触碰旧缓存或自动建表。
+5. `scripts/forecast.py`：显式 train/predict 必须传 `--calendar`；`api/forecast.py`：仅只读 GET，不调用训练或抓取日历。旧无连续性证据的发布列表隐藏、直接 503，保留原数据。
+6. 系统级 `scripts/verify_v07_prediction.py`：用显式可信本地日历独立核对冻结及当前源连续性、Decimal 标签与完整测试指标，不导入训练/生产连续性/metrics；不能证明历史拟合选择、供应商真实性或 point-in-time 修订。
+
+Windows 单行命令、历史截止日、未复权/公司行动与 daily_basic 修订风险见 [V0.7 指南](../../docs/V0.7_SINGLE_STOCK_PREDICTION.md)。新入口与下文旧 `main.py` demo 分离，旧管线继续保留。
+
 ## V0.4 推荐阅读顺序
 
 1. `data_loader/market_data_repository.py`：分析端稳定数据接口。

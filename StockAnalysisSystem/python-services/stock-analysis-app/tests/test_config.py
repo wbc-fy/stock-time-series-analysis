@@ -16,8 +16,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 class TestEnvironmentValidation:
     """环境变量校验测试。"""
 
-    def test_require_env_raises_on_missing(self):
-        """_require_env 对缺失变量应抛出 EnvironmentError。"""
+    def test_pytest_bootstrap_keeps_missing_variable_validation_testable(self):
+        """测试进程应自行满足模块前置条件，再验证其他变量缺失。"""
+        assert os.getenv('DB_PASSWORD')
         from config.settings import _require_env
         with pytest.raises(EnvironmentError):
             _require_env('NONEXISTENT_ENV_VAR_FOR_TEST_12345')

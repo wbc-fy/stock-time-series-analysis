@@ -20,6 +20,7 @@ from typing import List, Optional, Dict
 import pandas as pd
 from sqlalchemy import text
 
+from app.models.stock_daily import StockDailyRecord
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -91,6 +92,37 @@ class StockRepository:
         return self._batch_execute(stmt, records, len(records), TABLE_STOCK_BASIC)
 
     # ── 读取操作 ──────────────────────────────────────────────
+
+    def iter_daily_records(
+        self, start_date: date, end_date: date, batch_size: int = _BATCH_SIZE,
+        ts_code: Optional[str] = None,
+    ):
+        """Stream inclusive, deterministically ordered stock_daily rows in batches."""
+        if batch_size <= 0:
+            raise ValueError('batch_size 必须大于 0')
+        if start_date > end_date:
+            raise ValueError('start_date 不能晚于 end_date')
+
+        ts_code_filter = 'AND ts_code = :ts_code ' if ts_code is not None else ''
+        stmt = text(
+            'SELECT ts_code, trade_date, open, high, low, close, pre_close, '
+            '`change`, pct_chg, vol, amount '
+            'FROM stock_daily WHERE trade_date BETWEEN :start AND :end '
+            f'{ts_code_filter}'
+            'ORDER BY trade_date ASC, ts_code ASC'
+        ).execution_options(stream_results=True, yield_per=batch_size)
+        params = {'start': start_date, 'end': end_date}
+        if ts_code is not None:
+            params['ts_code'] = ts_code
+        rows = self.session.execute(stmt, params).mappings()
+        batch = []
+        for row in rows:
+            batch.append(StockDailyRecord(**dict(row), source='MYSQL_REPLAY'))
+            if len(batch) == batch_size:
+                yield batch
+                batch = []
+        if batch:
+            yield batch
 
     def load_stock_basic_df(self) -> pd.DataFrame:
         """读取 stock_basic 整表。"""

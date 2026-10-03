@@ -1,0 +1,22 @@
+{
+  "eventId": "FLINK_INDICATOR:000001.SZ:2026-08-28:v1",
+  "sourceEventId": "TUSHARE:000001.SZ:20260828",
+  "traceId": "replay-20260801-20260828",
+  "tsCode": "000001.SZ",
+  "tradeDate": "2026-08-28",
+  "source": "TUSHARE",
+  "sourceEventTime": "2026-08-28T15:00:00+08:00",
+  "close": 10.550000,
+  "volume": 1250345.000000,
+  "pctChg": 3.431400,
+  "ma5": 10.330000,
+  "ma10": 10.210000,
+  "ma20": 9.980000,
+  "volMa5": 1200000.000000,
+  "volMa10": 1150000.000000,
+  "volumeRatio": 1.041954,
+  "windowSize": 20,
+  "isWarmup": false,
+  "calculationTime": "2026-08-28T16:30:00+08:00",
+  "schemaVersion": 1
+}

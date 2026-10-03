@@ -49,14 +49,17 @@ class StockKafkaProducer:
         event: StockDailyEvent,
         topic: str | None = None,
     ) -> None:
+        client = self._client
+        if client is None:
+            raise KafkaProducerError('Kafka producer is closed')
         try:
-            self._client.produce(
+            client.produce(
                 topic=topic or self._daily_topic,
                 key=event.ts_code,
                 value=KafkaJsonSerializer.serialize(event),
                 on_delivery=self._delivery_callback,
             )
-            self._client.poll(0)
+            client.poll(0)
         except Exception as exc:
             self._delivery_callback.record_failure(exc)
             raise KafkaProducerError(
@@ -64,10 +67,13 @@ class StockKafkaProducer:
             ) from exc
 
     def flush(self, timeout: float | None = None) -> dict[str, object]:
+        client = self._client
+        if client is None:
+            raise KafkaProducerError('Kafka producer is closed')
         if timeout is None:
-            remaining = self._client.flush()
+            remaining = client.flush()
         else:
-            remaining = self._client.flush(timeout)
+            remaining = client.flush(timeout)
 
         if remaining:
             raise KafkaProducerError(
@@ -88,8 +94,15 @@ class StockKafkaProducer:
 
         return statistics
 
-    def close(self) -> dict[str, object]:
-        return self.flush()
+    def close(self, flush: bool = True) -> dict[str, object]:
+        """Optionally flush once, then release the native client reference."""
+        if self._client is None:
+            return self.statistics
+        try:
+            return self.flush() if flush else self.statistics
+        finally:
+            # Native close() may flush internally, and is absent in older clients.
+            self._client = None
 
     @property
     def statistics(self) -> dict[str, object]:

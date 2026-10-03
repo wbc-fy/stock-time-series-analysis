@@ -112,11 +112,66 @@ def test_flush_raises_when_messages_remain_undelivered():
 def test_close_flushes_messages():
     client = MagicMock()
     client.flush.return_value = 0
+    client.close.side_effect = client.flush  # Native close can flush again.
     producer = create_producer(client)
 
     producer.close()
 
     client.flush.assert_called_once()
+    client.close.assert_not_called()
+    assert producer._client is None
+
+
+def test_close_without_flush_releases_client_without_extra_flush():
+    client = MagicMock()
+    client.close.side_effect = client.flush  # Detect an implicit native flush.
+    producer = create_producer(client)
+
+    producer.close(flush=False)
+
+    client.flush.assert_not_called()
+    client.close.assert_not_called()
+    assert producer._client is None
+
+
+def test_close_is_idempotent_and_does_not_flush_again():
+    client = MagicMock()
+    client.flush.return_value = 0
+    producer = create_producer(client)
+
+    producer.close()
+    producer.close()
+
+    client.flush.assert_called_once_with()
+    client.close.assert_not_called()
+    assert producer._client is None
+
+
+def test_close_releases_client_even_when_flush_fails():
+    client = MagicMock()
+    client.flush.return_value = 2
+    producer = create_producer(client)
+
+    with pytest.raises(KafkaProducerError, match='undelivered'):
+        producer.close()
+
+    client.flush.assert_called_once_with()
+    client.close.assert_not_called()
+    assert producer._client is None
+
+
+def test_send_and_flush_fail_clearly_after_close():
+    client = MagicMock()
+    producer = create_producer(client)
+    producer.close(flush=False)
+
+    with pytest.raises(KafkaProducerError, match='closed'):
+        producer.send_event(create_event())
+    with pytest.raises(KafkaProducerError, match='closed'):
+        producer.flush()
+
+    client.produce.assert_not_called()
+    client.flush.assert_not_called()
 
 
 def test_successful_batch_is_not_affected_by_previous_failure():

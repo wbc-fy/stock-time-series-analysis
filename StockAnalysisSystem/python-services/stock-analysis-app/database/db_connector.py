@@ -14,6 +14,7 @@ from contextlib import contextmanager
 
 import pandas as pd
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import URL
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker, declarative_base
 
@@ -47,20 +48,21 @@ class DatabaseConnector:
         """建立数据库连接（含超时、活跃检测、失败诊断）"""
         cfg = self.config
         try:
-            url = (
-                f"mysql+pymysql://{cfg['user']}:{cfg['password']}"
-                f"@{cfg['host']}:{cfg['port']}"
-                f"/{cfg['database']}?charset={cfg['charset']}"
-            )
+            url = URL.create('mysql+pymysql', username=cfg['user'], password=cfg['password'],
+                             host=cfg['host'], port=int(cfg['port']), database=cfg['database'],
+                             query={'charset': cfg['charset']})
+            connect_args = {'connect_timeout': cfg.get('connect_timeout', 10)}
+            # Opt-in per caller; legacy connection defaults remain unchanged.
+            for timeout in ('read_timeout', 'write_timeout'):
+                if timeout in cfg:
+                    connect_args[timeout] = cfg[timeout]
             self.engine = create_engine(
                 url,
                 echo=False,
                 pool_recycle=cfg.get('pool_recycle', 3600),
                 pool_pre_ping=cfg.get('pool_pre_ping', True),
                 pool_timeout=cfg.get('pool_timeout', 30),
-                connect_args={
-                    'connect_timeout': cfg.get('connect_timeout', 10),
-                },
+                connect_args=connect_args,
             )
             self.Session = sessionmaker(bind=self.engine)
             logger.info(

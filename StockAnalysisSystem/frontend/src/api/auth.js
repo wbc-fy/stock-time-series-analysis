@@ -42,4 +42,4 @@ export function createAuthClient({ fetchImpl = globalThis.fetch, base = '' } = {
   }
 }
 
-export const authApi = createAuthClient()
+export const authApi = createAuthClient({ base: import.meta.env.VITE_API_BASE || '' })
